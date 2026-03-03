@@ -28,6 +28,8 @@
     .btn:active { transform: translateY(1px); }
     .hint { color: var(--muted); font-size: 12px; }
     .pill { display:inline-flex; align-items:center; gap:6px; padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); background:#0b1220; font-size: 12px; color: var(--muted); }
+    .ok { color: #86efac; }
+    .warn { color: #fca5a5; }
 
     table { width: 100%; border-collapse: collapse; }
     thead th { position: sticky; top: 0; background: rgba(17,24,39,.98); z-index: 1; }
@@ -46,13 +48,13 @@
     @media (max-width: 980px) { .costs { grid-template-columns: 1fr; } }
     .kv { display:flex; justify-content: space-between; gap:10px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: #0b1220; }
     .kv b { font-variant-numeric: tabular-nums; }
-    .ok { color: #86efac; }
-    .warn { color: #fca5a5; }
 
     details { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background:#0b1220; }
     summary { cursor: pointer; padding: 10px 12px; font-weight: 700; }
     .details-body { padding: 10px 12px 12px; color: var(--muted); font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--txt); }
+    textarea { width:100%; min-height: 110px; border-radius: 12px; border: 1px solid var(--line); background:#0b1220; color: var(--txt); padding: 10px; }
+    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
 
     /* Screenshot Import UI */
     .import-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
@@ -69,8 +71,7 @@
     .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #16a34a); }
     .small { font-size: 12px; color: var(--muted); }
     .imgwrap { border:1px solid var(--line); border-radius: 12px; overflow:hidden; background:#060a11; }
-    canvas { width:100%; height:auto; display:block; touch-action: none; } /* wichtig für iOS */
-    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    canvas { width:100%; height:auto; display:block; touch-action: none; } /* iOS */
 
     /* Modal confirm */
     .modal-backdrop{
@@ -93,6 +94,13 @@
     }
     .modal-img img{ width:100%; display:block; }
     .modal-ft{ padding: 12px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+
+    /* Goal planner */
+    .goal-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
+    .goal-table td:first-child { width: 55%; }
+    .goal-table input.num { width: 90px; }
+    .goal-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border:1px solid var(--line); border-radius:999px; background:#0b1220; color:var(--muted); font-size:12px; }
+    .goal-status { font-weight:800; }
   </style>
 </head>
 <body>
@@ -126,8 +134,8 @@
         <div class="details-body">
           <div class="import-grid">
             <div class="small">
-              Lade einen Screenshot hoch → „Klick-Import starten“ → dann exakt auf die <b>Ziffern im Badge</b> tippen.<br>
-              Danach: Bestätigung (Übernehmen / Neu klicken) damit keine Fehlwerte reinrutschen.
+              Screenshot hochladen → „Klick-Import starten“ → dann nacheinander St.1…St.7 auf die <b>Ziffern</b> tippen.<br>
+              Popup: „Übernehmen“ oder „Neu klicken“.
             </div>
 
             <div class="import-top">
@@ -219,6 +227,53 @@
         </div>
       </details>
 
+      <details style="margin-top:10px;" open>
+        <summary>Ziel-Planer (mehrere Farben → L7 Ziel)</summary>
+        <div class="details-body">
+          <div class="goal-grid">
+            <div class="small">
+              Hier gibst du ein, wie viele <b>L7</b> du am Ende pro Typ willst. Er rechnet die <b>minimal nötigen</b> Upgrades + Kosten, basierend auf deinem aktuellen Inventar (Tabelle links).
+            </div>
+
+            <div style="overflow:auto; border-radius: 10px; border: 1px solid var(--line);">
+              <table class="goal-table" id="goalTable">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Ziel L7</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <div class="row">
+              <span class="goal-badge">Status: <span id="goalStatus" class="goal-status muted">—</span></span>
+              <button class="btn primary" id="goalCalcBtn">Plan berechnen</button>
+              <button class="btn" id="goalClearBtn">Ziele löschen</button>
+            </div>
+
+            <div class="small"><b>Optional:</b> Deine aktuellen Ressourcen (damit er “reicht / reicht nicht” sagen kann)</div>
+            <div class="costs">
+              <div class="kv"><span>Dungeon Gems (hast)</span><b><input class="num" id="haveDG" placeholder="0"></b></div>
+              <div class="kv"><span>Gold (hast)</span><b><input class="num" id="haveGold" placeholder="0"></b></div>
+              <div class="kv"><span>Dark Forest Gems (hast)</span><b><input class="num" id="haveDFG" placeholder="0"></b></div>
+              <div class="kv"><span>Champion Coins (hast)</span><b><input class="num" id="haveCC" placeholder="0"></b></div>
+              <div class="kv"><span>Underground Brains (hast)</span><b><input class="num" id="haveUB" placeholder="0"></b></div>
+              <div class="kv"><span>Hinweis</span><b class="mono">nur Check</b></div>
+            </div>
+
+            <div style="border:1px solid var(--line); border-radius:12px; padding:10px; background:#0b1220;">
+              <div class="small" style="margin-bottom:6px;"><b>Plan-Ergebnis</b></div>
+              <div class="small" id="goalSummary" class="muted">Noch kein Plan berechnet.</div>
+              <div class="small" style="margin-top:8px;" id="goalMissing"></div>
+              <div class="small" style="margin-top:8px;" id="goalResources"></div>
+            </div>
+
+          </div>
+        </div>
+      </details>
+
       <details style="margin-top:10px;">
         <summary>Export / Import (JSON)</summary>
         <div class="details-body">
@@ -227,8 +282,7 @@
             <button class="btn" id="importBtn">Import</button>
             <span class="hint">Zum Teilen/Backup in Discord/Notes.</span>
           </div>
-          <textarea id="jsonBox" style="width:100%; min-height:110px; border-radius:12px; border:1px solid var(--line); background:#0b1220; color:var(--txt); padding:10px;"
-            placeholder='{"Red":[...], ...}' spellcheck="false"></textarea>
+          <textarea id="jsonBox" placeholder='{"Red":[...], ...}' spellcheck="false"></textarea>
         </div>
       </details>
     </div>
@@ -238,7 +292,7 @@
 <!-- Confirm Modal -->
 <div class="modal-backdrop" id="confirmBackdrop">
   <div class="modal">
-    <div class="modal-hd" id="confirmTitle">Zahl übernehmen?</div>
+    <div class="modal-hd">Zahl übernehmen?</div>
     <div class="modal-bd">
       Erkannte Zahl für <b id="confirmType">Type</b> / <b id="confirmLevel">St.X</b>: <b id="confirmValue">0</b>
       <div class="small" style="margin-top:6px;">Wenn’s falsch ist: „Neu klicken“ und nochmal exakt auf die Ziffer tippen.</div>
@@ -296,7 +350,7 @@
   const $ = (id) => document.getElementById(id);
   function fmt(n) { return new Intl.NumberFormat("de-DE").format(n ?? 0); }
   function parseIntSafe(v) {
-    const n = Number(String(v).replaceAll(".", "").replaceAll(",", "."));
+    const n = Number(String(v ?? "").replaceAll(".", "").replaceAll(",", "."));
     if (!Number.isFinite(n) || n < 0) return 0;
     return Math.floor(n);
   }
@@ -354,6 +408,30 @@
   }
   buildTables();
 
+  // Goal table
+  const goalBody = $("goalTable").querySelector("tbody");
+  function buildGoalTable() {
+    goalBody.innerHTML = "";
+    for (const type of ALL_TYPES) {
+      const tr = document.createElement("tr");
+      const tdT = document.createElement("td");
+      tdT.className = "type";
+      tdT.textContent = type;
+      const tdI = document.createElement("td");
+      const inp = document.createElement("input");
+      inp.className = "num";
+      inp.type = "text";
+      inp.inputMode = "numeric";
+      inp.placeholder = "0";
+      inp.dataset.goalType = type;
+      tdI.appendChild(inp);
+      tr.appendChild(tdT);
+      tr.appendChild(tdI);
+      goalBody.appendChild(tr);
+    }
+  }
+  buildGoalTable();
+
   // ---- Inventory I/O
   function readInventoryFromInputs() {
     const inv = {};
@@ -376,7 +454,7 @@
     });
   }
 
-  // ---- Core algorithm
+  // ---- Core "upgrade everything possible"
   function compute(inv) {
     const out = {};
     for (const t of ALL_TYPES) out[t] = inv[t].slice();
@@ -474,6 +552,9 @@
     $("ocrStatus").textContent = "Bereit.";
     setOcrProgress(0);
     stopClickImport();
+    clearGoals();
+    clearHave();
+    renderGoalEmpty();
   }
 
   // ---- Export/Import JSON
@@ -497,6 +578,7 @@
       }
       writeInventoryToInputs(inv);
       autosave();
+      $("calcBtn").click();
     } catch {
       alert("Import fehlgeschlagen: Ungültiges JSON.");
     }
@@ -612,7 +694,6 @@
     }
   });
 
-  // ✅ pointerdown statt click (iOS)
   canvas.addEventListener("pointerdown", async (ev) => {
     if (!clickImportActive || !loadedImage || clickBusy) return;
     ev.preventDefault();
@@ -649,7 +730,6 @@
     }
   });
 
-  // ---- Confirm modal logic
   function openConfirm({type, level, value, previewUrl}) {
     $("confirmType").textContent = type;
     $("confirmLevel").textContent = `St.${level}`;
@@ -662,7 +742,6 @@
       acceptValue(type, level, value);
     };
 
-    // ✅ Neu klicken: Modal zu, Level bleibt gleich, User klickt einfach neu
     $("confirmRetry").onclick = () => {
       closeConfirm();
       $("ocrStatus").textContent = `Okay – bitte neu klicken für St.${clickImportLevel}.`;
@@ -670,18 +749,18 @@
       drawOverlay();
     };
   }
+
   function closeConfirm() {
     $("confirmBackdrop").style.display = "none";
     $("confirmImg").src = "";
   }
 
-  // ✅ Größerer Crop + 2-Pass (wenn unsicher -> noch größer)
   async function ocrNumberAtPoint(cx, cy) {
-    // Pass 1: groß (deutlich größer als vorher)
-    let r1 = await ocrWithCrop(cx, cy, 0.10, 0.08, 260, 180); // relative + max
+    // Pass 1: größer (verhindert “halbe 8”)
+    let r1 = await ocrWithCrop(cx, cy, 0.10, 0.08, 260, 180);
     if (r1.value !== null) return r1;
 
-    // Pass 2: extra groß (falls die Zahl abgeschnitten war)
+    // Pass 2: extra groß
     let r2 = await ocrWithCrop(cx, cy, 0.14, 0.11, 360, 260);
     return r2;
   }
@@ -699,7 +778,7 @@
     const h = y1 - y0;
 
     const off = document.createElement("canvas");
-    const scale = 4; // etwas weniger als 5, weil Crop größer ist
+    const scale = 4;
     off.width = w * scale;
     off.height = h * scale;
     const octx = off.getContext("2d", { willReadFrequently: true });
@@ -707,7 +786,7 @@
     octx.imageSmoothingEnabled = false;
     octx.drawImage(canvas, x0, y0, w, h, 0, 0, off.width, off.height);
 
-    // preprocess: grayscale + contrast + binary
+    // preprocess
     const imgData = octx.getImageData(0, 0, off.width, off.height);
     const data = imgData.data;
 
@@ -729,7 +808,7 @@
         if (m.status === "recognizing text" && typeof m.progress === "number") setOcrProgress(m.progress);
       },
       tessedit_char_whitelist: "0123456789",
-      tessedit_pageseg_mode: "8" // single word
+      tessedit_pageseg_mode: "8"
     });
 
     const cx2 = off.width / 2;
@@ -769,7 +848,156 @@
     return { value, previewUrl };
   }
 
-  // ---- Actions
+  // ============================
+  // GOAL PLANNER (L7 targets)
+  // ============================
+  function readGoalsL7() {
+    const goals = {};
+    goalBody.querySelectorAll("input.num").forEach(inp => {
+      const t = inp.dataset.goalType;
+      goals[t] = parseIntSafe(inp.value);
+    });
+    return goals;
+  }
+
+  function clearGoals() {
+    goalBody.querySelectorAll("input.num").forEach(inp => inp.value = "");
+  }
+
+  function clearHave() {
+    ["haveDG","haveGold","haveDFG","haveCC","haveUB"].forEach(id => $(id).value = "");
+  }
+
+  function renderGoalEmpty() {
+    $("goalStatus").textContent = "—";
+    $("goalStatus").className = "goal-status muted";
+    $("goalSummary").textContent = "Noch kein Plan berechnet.";
+    $("goalMissing").innerHTML = "";
+    $("goalResources").innerHTML = "";
+  }
+
+  function goalPlan(inv, goalsL7) {
+    // For each type: minimal required upgrades to reach L7 target using existing L2..L7, and needing L1 if short.
+    const plan = {
+      costs: { dg:0, gold:0, dfg:0, cc:0, ub:0 },
+      upgradesByType: {}, // {type: {1:..6}}
+      missingL1: {}, // {type: number}
+      totalUpgrades: 0
+    };
+
+    for (const type of ALL_TYPES) {
+      const target7 = Math.max(0, goalsL7[type] ?? 0);
+      const have = inv[type].slice(); // 0..7
+      const req = Array(8).fill(0);
+      req[7] = Math.max(0, target7 - have[7]);
+      for (let k=6; k>=1; k--) {
+        // only target L7 => need 3*req[k+1] stones at level k
+        req[k] = Math.max(0, 3*req[k+1] - have[k]);
+      }
+
+      const upgrades = {};
+      const stepCosts = costsForType(type);
+      for (let step=1; step<=6; step++) {
+        const up = req[step+1]; // upgrades step->step+1
+        upgrades[step] = up;
+        if (up > 0) {
+          plan.totalUpgrades += up;
+          const c = stepCosts[step] || {};
+          plan.costs.dg   += (c.dg   || 0) * up;
+          plan.costs.gold += (c.gold || 0) * up;
+          plan.costs.dfg  += (c.dfg  || 0) * up;
+          plan.costs.cc   += (c.cc   || 0) * up;
+          plan.costs.ub   += (c.ub   || 0) * up;
+        }
+      }
+      plan.upgradesByType[type] = upgrades;
+      if (req[1] > 0) plan.missingL1[type] = req[1];
+    }
+    return plan;
+  }
+
+  function renderGoalPlan(plan) {
+    const anyGoal = Object.values(readGoalsL7()).some(v => v > 0);
+    if (!anyGoal) { renderGoalEmpty(); return; }
+
+    // Status: by stones (missing L1?) and by resources (if provided)
+    const missingTypes = Object.keys(plan.missingL1);
+    const missingStones = missingTypes.length > 0;
+
+    // resources check (optional)
+    const have = {
+      dg: parseIntSafe($("haveDG").value),
+      gold: parseIntSafe($("haveGold").value),
+      dfg: parseIntSafe($("haveDFG").value),
+      cc: parseIntSafe($("haveCC").value),
+      ub: parseIntSafe($("haveUB").value)
+    };
+    const anyHaveEntered = Object.values(have).some(v => v > 0);
+    let resOk = true;
+    let resLines = [];
+    if (anyHaveEntered) {
+      const need = plan.costs;
+      const diff = {
+        dg: have.dg - need.dg,
+        gold: have.gold - need.gold,
+        dfg: have.dfg - need.dfg,
+        cc: have.cc - need.cc,
+        ub: have.ub - need.ub
+      };
+      const keys = [
+        ["Dungeon Gems","dg"],
+        ["Gold","gold"],
+        ["Dark Forest Gems","dfg"],
+        ["Champion Coins","cc"],
+        ["Underground Brains","ub"]
+      ];
+      for (const [label,k] of keys) {
+        if (need[k] <= 0 && have[k] <= 0) continue;
+        if (diff[k] < 0) resOk = false;
+        resLines.push(`${label}: brauchst <span class="mono">${fmt(need[k])}</span> · hast <span class="mono">${fmt(have[k])}</span> · ${diff[k] >= 0 ? 'übrig' : 'fehlt'} <span class="mono">${fmt(Math.abs(diff[k]))}</span>`);
+      }
+      $("goalResources").innerHTML = `<div class="small"><b>Ressourcen-Check</b></div><div class="small">${resLines.join("<br>")}</div>`;
+    } else {
+      $("goalResources").innerHTML = `<div class="small muted">Ressourcen-Check: trage oben optional deine Ressourcen ein.</div>`;
+    }
+
+    // Summary
+    $("goalSummary").innerHTML =
+      `Benötigte Upgrades (minimal): <b class="mono">${fmt(plan.totalUpgrades)}</b><br>` +
+      `Kosten: DG <b class="mono">${fmt(plan.costs.dg)}</b>, Gold <b class="mono">${fmt(plan.costs.gold)}</b>, DFG <b class="mono">${fmt(plan.costs.dfg)}</b>, CC <b class="mono">${fmt(plan.costs.cc)}</b>, Brains <b class="mono">${fmt(plan.costs.ub)}</b>`;
+
+    // Missing L1
+    if (missingStones) {
+      const list = missingTypes
+        .map(t => `${t}: fehlende L1 <span class="mono">${fmt(plan.missingL1[t])}</span>`)
+        .join("<br>");
+      $("goalMissing").innerHTML =
+        `<div class="small"><b>Fehlende Basissteine (L1)</b></div>` +
+        `<div class="small warn">${list}</div>`;
+    } else {
+      $("goalMissing").innerHTML =
+        `<div class="small ok"><b>Stein-Seite:</b> mit deinem Inventar sind die Ziele grundsätzlich craftbar (keine fehlenden L1 nötig).</div>`;
+    }
+
+    // Global status
+    let statusText = "OK";
+    let statusClass = "goal-status ok";
+    if (missingStones) { statusText = "Fehlende L1"; statusClass = "goal-status warn"; }
+    if (anyHaveEntered && !resOk) { statusText = "Ressourcen fehlen"; statusClass = "goal-status warn"; }
+    if (missingStones && anyHaveEntered && !resOk) { statusText = "L1 + Ressourcen fehlen"; statusClass = "goal-status warn"; }
+    $("goalStatus").textContent = statusText;
+    $("goalStatus").className = statusClass;
+  }
+
+  function clearGoalOutputsOnly() {
+    $("goalSummary").textContent = "Noch kein Plan berechnet.";
+    $("goalMissing").innerHTML = "";
+    $("goalResources").innerHTML = "";
+    $("goalStatus").textContent = "—";
+    $("goalStatus").className = "goal-status muted";
+  }
+
+  // ---- Actions wiring
   $("calcBtn").addEventListener("click", () => {
     const inv = readInventoryFromInputs();
     const res = compute(inv);
@@ -781,7 +1009,9 @@
 
   $("saveBtn").addEventListener("click", save);
   $("loadBtn").addEventListener("click", load);
-  $("clearBtn").addEventListener("click", () => { if (confirm("Wirklich alles löschen?")) clearAll(); });
+  $("clearBtn").addEventListener("click", () => {
+    if (confirm("Wirklich alles löschen?")) clearAll();
+  });
 
   $("exportBtn").addEventListener("click", exportJSON);
   $("importBtn").addEventListener("click", importJSON);
@@ -789,9 +1019,22 @@
   $("startClickImportBtn").addEventListener("click", startClickImport);
   $("cancelClickImportBtn").addEventListener("click", stopClickImport);
 
+  $("goalCalcBtn").addEventListener("click", () => {
+    const inv = readInventoryFromInputs();
+    const goals = readGoalsL7();
+    const plan = goalPlan(inv, goals);
+    renderGoalPlan(plan);
+  });
+
+  $("goalClearBtn").addEventListener("click", () => {
+    clearGoals();
+    clearGoalOutputsOnly();
+  });
+
   // initial
   load();
   $("calcBtn").click();
+  renderGoalEmpty();
 </script>
 </body>
 </html>
