@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hunt Royale – Stone Upgrade Calculator</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#111827; --muted:#94a3b8; --txt:#e5e7eb; --accent:#22c55e; --danger:#ef4444; --line:#1f2937; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: radial-gradient(1200px 600px at 10% 10%, #0f172a 0%, var(--bg) 55%), var(--bg); color: var(--txt); }
+    header { padding: 18px 14px 8px; max-width: 1200px; margin: 0 auto; }
+    h1 { margin: 0; font-size: 18px; letter-spacing: .2px; }
+    .sub { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.3; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 10px 14px 22px; }
+    .grid { display: grid; grid-template-columns: 1.35fr .65fr; gap: 12px; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+    .card { background: rgba(17,24,39,.9); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .row + .row { margin-top: 10px; }
+    .btn {
+      appearance: none; border: 1px solid var(--line); background: #0f172a; color: var(--txt);
+      padding: 9px 11px; border-radius: 10px; cursor:pointer; font-weight: 600; font-size: 13px;
+    }
+    .btn.primary { background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%); border-color: #16a34a; color:#04130a; }
+    .btn.danger { background: #111827; border-color: #3f1d1d; color: #fecaca; }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+    .btn:active { transform: translateY(1px); }
+    .hint { color: var(--muted); font-size: 12px; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); background:#0b1220; font-size: 12px; color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th { position: sticky; top: 0; background: rgba(17,24,39,.98); z-index: 1; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 13px; text-align: center; }
+    th:first-child, td:first-child { text-align: left; padding-left: 10px; }
+    .type { font-weight: 700; }
+    .muted { color: var(--muted); }
+    input.num {
+      width: 72px; max-width: 100%;
+      padding: 7px 8px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0b1220; color: var(--txt); text-align: right; font-variant-numeric: tabular-nums;
+    }
+    input.num:focus { outline: 2px solid rgba(34,197,94,.35); border-color: rgba(34,197,94,.6); }
+
+    .costs { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 980px) { .costs { grid-template-columns: 1fr; } }
+    .kv { display:flex; justify-content: space-between; gap:10px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: #0b1220; }
+    .kv b { font-variant-numeric: tabular-nums; }
+    .ok { color: #86efac; }
+    .warn { color: #fca5a5; }
+
+    details { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background:#0b1220; }
+    summary { cursor: pointer; padding: 10px 12px; font-weight: 700; }
+    .details-body { padding: 10px 12px 12px; color: var(--muted); font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--txt); }
+    textarea { width:100%; min-height: 110px; border-radius: 12px; border: 1px solid var(--line); background:#0b1220; color: var(--txt); padding: 10px; }
+    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
+
+    /* Import UI */
+    .import-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
+    .import-top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    select, input[type="file"]{
+      padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0b1220; color: var(--txt); font-size: 13px;
+    }
+    input[type="file"]{ color: var(--muted); font-size: 12px; }
+    .progress {
+      width: 100%; height: 10px; border-radius: 999px; overflow:hidden;
+      border: 1px solid var(--line); background: #0b1220;
+    }
+    .progress > div { height: 100%; width: 0%; background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .small { font-size: 12px; color: var(--muted); }
+    .imgwrap { border:1px solid var(--line); border-radius: 12px; overflow:hidden; background:#060a11; }
+    canvas { width:100%; height:auto; display:block; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Hunt Royale – Dungeon Stone Upgrade Calculator</h1>
+  <div class="sub">
+    Core Rule: Jeder Upgrade-Schritt braucht <b>3 Steine</b> des vorherigen Levels → 1 Stein des nächsten Levels.
+    Reste &lt;3 bleiben liegen. Kosten werden pro Upgrade addiert (1→2, 2→3, …, 6→7).
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="card">
+      <div class="row">
+        <button class="btn primary" id="calcBtn">Berechnen</button>
+        <button class="btn" id="saveBtn">Speichern</button>
+        <button class="btn" id="loadBtn">Laden</button>
+        <button class="btn danger" id="clearBtn">Alles löschen</button>
+        <span class="pill">Auto-Save: <span id="autosaveState" class="ok">AN</span></span>
+        <span class="pill">Version: <span class="mono">v1</span></span>
+      </div>
+
+      <div class="row">
+        <span class="hint">Tipp (iPhone): Safari → Teilen → „Zum Home-Bildschirm“, dann wirkt’s wie eine App.</span>
+      </div>
+
+      <details style="margin-top:10px;" open>
+        <summary>Screenshot-Import (Klick auf Zahlen-Badges) + Text-Import</summary>
+        <div class="details-body">
+          <div class="import-grid">
+            <div class="small">
+              <b>Empfohlen:</b> Screenshot hochladen → „Klick-Import starten“ → dann nacheinander auf die Zahl-Badges (St.1…St.7) klicken.<br>
+              OCR über das ganze Bild ist bei Game-UI oft ungenau, deshalb hier die Badge-OCR.
+            </div>
+
+            <div class="import-top">
+              <label class="small">Ziel-Typ:</label>
+              <select id="importMode">
+                <option value="Rotten">Verfault (Rotten)</option>
+                <option value="Red">Rot (Red)</option>
+                <option value="Green">Grün (Green)</option>
+                <option value="Blue">Blau (Blue)</option>
+                <option value="Purple">Lila (Purple)</option>
+                <option value="Pearl">Perlmutt (Pearl)</option>
+                <option value="Yellow">Gelb (Yellow)</option>
+                <option value="Azure">Azurblau (Azure)</option>
+                <option value="Earth">Erde (Earth)</option>
+              </select>
+
+              <input type="file" id="imgFile" accept="image/*" />
+              <button class="btn" id="startClickImportBtn">Klick-Import starten</button>
+              <button class="btn" id="cancelClickImportBtn">Abbrechen</button>
+              <button class="btn" id="readWholeOcrBtn">Ganzes Bild lesen (OCR Text)</button>
+              <button class="btn" id="applyTextBtn">Aus Text übernehmen</button>
+            </div>
+
+            <div class="progress"><div id="ocrBar"></div></div>
+            <div class="small" id="ocrStatus">Bereit.</div>
+
+            <div class="imgwrap">
+              <canvas id="imgCanvas"></canvas>
+            </div>
+
+            <div class="small" id="clickHelp">
+              Klick-Import: <span class="mono">aus</span> (lade ein Bild und drücke „Klick-Import starten“)
+            </div>
+
+            <textarea id="importText" placeholder="Optional: Live-Text hier einfügen und 'Aus Text übernehmen' klicken..." spellcheck="false"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <div style="overflow:auto; margin-top:10px; border-radius: 12px; border: 1px solid var(--line);">
+        <table id="invTable">
+          <thead>
+          <tr>
+            <th>Type</th>
+            <th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>L5</th><th>L6</th><th>L7</th>
+          </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        Standard Types: Red, Green, Blue, Purple, Pearl, Yellow, Azure (gleiche Costs).<br/>
+        Earth & Rotten haben separate Costs.
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="card">
+      <h2 style="margin:0 0 8px; font-size:15px;">Ergebnis</h2>
+
+      <div class="costs" style="margin-bottom:10px;">
+        <div class="kv"><span>Dungeon Gems</span><b id="cDG">0</b></div>
+        <div class="kv"><span>Gold</span><b id="cGold">0</b></div>
+        <div class="kv"><span>Dark Forest Gems</span><b id="cDFG">0</b></div>
+        <div class="kv"><span>Champion Coins</span><b id="cCC">0</b></div>
+        <div class="kv"><span>Underground Brains</span><b id="cUB">0</b></div>
+        <div class="kv"><span>Total Upgrades</span><b id="cUp">0</b></div>
+      </div>
+
+      <details open>
+        <summary>Neues Inventar (nach Upgrades)</summary>
+        <div class="details-body">
+          <div style="overflow:auto; border-radius: 10px; border: 1px solid var(--line);">
+            <table id="outTable">
+              <thead>
+              <tr>
+                <th>Type</th>
+                <th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>L5</th><th>L6</th><th>L7</th>
+              </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-top:10px;">
+        <summary>Upgrade-Details</summary>
+        <div class="details-body" id="detailsBox">
+          <div class="muted">Drück „Berechnen“, dann siehst du hier pro Type wie viele Upgrades pro Step gemacht wurden.</div>
+        </div>
+      </details>
+
+      <details style="margin-top:10px;">
+        <summary>Export / Import (JSON)</summary>
+        <div class="details-body">
+          <div class="row" style="margin-bottom:8px;">
+            <button class="btn" id="exportBtn">Export</button>
+            <button class="btn" id="importBtn">Import</button>
+            <span class="hint">Zum Teilen/Backup in Discord/Notes.</span>
+          </div>
+          <textarea id="jsonBox" placeholder='{"Red":[...], ...}' spellcheck="false"></textarea>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+  // ---- Types
+  const TYPES_STANDARD = ["Red","Green","Blue","Purple","Pearl","Yellow","Azure"];
+  const TYPES_SPECIAL = ["Earth","Rotten"];
+  const ALL_TYPES = [...TYPES_STANDARD, ...TYPES_SPECIAL];
+
+  // ---- Costs
+  const COSTS_STANDARD = {
+    1: { dg: 30 },
+    2: { dg: 210 },
+    3: { dg: 630, gold: 400 },
+    4: { dg: 1800, gold: 1000 },
+    5: { dg: 3600, gold: 2000 },
+    6: { dfg: 2500, gold: 5000 }
+  };
+  const COSTS_EARTH = {
+    1: { dg: 20, cc: 200 },
+    2: { dg: 100, cc: 400 },
+    3: { dg: 300, cc: 1000, gold: 400 },
+    4: { dg: 800, cc: 2500, gold: 800 },
+    5: { dg: 2200, cc: 5000, gold: 1500 },
+    6: { dfg: 1250, cc: 10000, gold: 4000 }
+  };
+  const COSTS_ROTTEN = {
+    1: { ub: 100 },
+    2: { ub: 250 },
+    3: { ub: 500, dg: 200, gold: 300 },
+    4: { ub: 1000, dg: 600, gold: 800 },
+    5: { ub: 2000, dg: 1400, gold: 1500 },
+    6: { ub: 4000, dfg: 1000, gold: 4000 }
+  };
+  function costsForType(type) {
+    if (TYPES_STANDARD.includes(type)) return COSTS_STANDARD;
+    if (type === "Earth") return COSTS_EARTH;
+    if (type === "Rotten") return COSTS_ROTTEN;
+    return COSTS_STANDARD;
+  }
+
+  // ---- DOM
+  const $ = (id) => document.getElementById(id);
+  function fmt(n) { return new Intl.NumberFormat("de-DE").format(n ?? 0); }
+  function parseIntSafe(v) {
+    const n = Number(String(v).replaceAll(".", "").replaceAll(",", "."));
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.floor(n);
+  }
+
+  // ---- Tables
+  const invBody = $("invTable").querySelector("tbody");
+  const outBody = $("outTable").querySelector("tbody");
+
+  function makeRow(type) {
+    const tr = document.createElement("tr");
+    const td0 = document.createElement("td");
+    td0.className = "type";
+    td0.textContent = type;
+    tr.appendChild(td0);
+
+    for (let lvl=1; lvl<=7; lvl++) {
+      const td = document.createElement("td");
+      const inp = document.createElement("input");
+      inp.className = "num";
+      inp.type = "text";
+      inp.inputMode = "numeric";
+      inp.autocomplete = "off";
+      inp.placeholder = "0";
+      inp.dataset.type = type;
+      inp.dataset.lvl = String(lvl);
+      inp.addEventListener("input", () => autosave());
+      td.appendChild(inp);
+      tr.appendChild(td);
+    }
+    return tr;
+  }
+
+  function buildTables() {
+    invBody.innerHTML = "";
+    outBody.innerHTML = "";
+    for (const type of ALL_TYPES) {
+      invBody.appendChild(makeRow(type));
+
+      const trO = document.createElement("tr");
+      const td0 = document.createElement("td");
+      td0.className = "type";
+      td0.textContent = type;
+      trO.appendChild(td0);
+
+      for (let lvl=1; lvl<=7; lvl++) {
+        const td = document.createElement("td");
+        td.className = "mono";
+        td.textContent = "0";
+        td.dataset.outType = type;
+        td.dataset.outLvl = String(lvl);
+        trO.appendChild(td);
+      }
+      outBody.appendChild(trO);
+    }
+  }
+  buildTables();
+
+  function readInventoryFromInputs() {
+    const inv = {};
+    for (const type of ALL_TYPES) inv[type] = Array(8).fill(0);
+    invBody.querySelectorAll("input.num").forEach(inp => {
+      inv[inp.dataset.type][Number(inp.dataset.lvl)] = parseIntSafe(inp.value);
+    });
+    return inv;
+  }
+  function writeInventoryToInputs(inv) {
+    invBody.querySelectorAll("input.num").forEach(inp => {
+      const type = inp.dataset.type;
+      const lvl = Number(inp.dataset.lvl);
+      inp.value = (inv?.[type]?.[lvl] ?? 0) ? String(inv[type][lvl]) : "";
+    });
+  }
+  function writeOutputInventory(inv) {
+    outBody.querySelectorAll("td[data-out-type]").forEach(td => {
+      td.textContent = fmt(inv?.[td.dataset.outType]?.[Number(td.dataset.outLvl)] ?? 0);
+    });
+  }
+
+  // ---- Compute
+  function compute(inv) {
+    const out = {};
+    for (const t of ALL_TYPES) out[t] = inv[t].slice();
+    const totalCosts = { dg:0, gold:0, dfg:0, cc:0, ub:0 };
+    const details = {};
+    let totalUpgrades = 0;
+
+    for (const type of ALL_TYPES) {
+      const stepCosts = costsForType(type);
+      details[type] = { steps: {} };
+
+      for (let step=1; step<=6; step++) {
+        const upgrades = Math.floor(out[type][step] / 3);
+        if (upgrades > 0) {
+          out[type][step] -= upgrades * 3;
+          out[type][step+1] += upgrades;
+          totalUpgrades += upgrades;
+
+          const c = stepCosts[step] || {};
+          totalCosts.dg   += (c.dg   || 0) * upgrades;
+          totalCosts.gold += (c.gold || 0) * upgrades;
+          totalCosts.dfg  += (c.dfg  || 0) * upgrades;
+          totalCosts.cc   += (c.cc   || 0) * upgrades;
+          totalCosts.ub   += (c.ub   || 0) * upgrades;
+        }
+        details[type].steps[step] = upgrades;
+      }
+    }
+    return { out, totalCosts, details, totalUpgrades };
+  }
+
+  function renderDetails(details) {
+    const box = $("detailsBox");
+    box.innerHTML = "";
+    for (const type of ALL_TYPES) {
+      const d = details[type];
+      const sum = Object.values(d.steps).reduce((a,b)=>a+b,0);
+      if (sum === 0) continue;
+
+      const div = document.createElement("div");
+      div.style.marginBottom = "10px";
+      div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; gap:10px; align-items:center;">
+          <b style="color: var(--txt);">${type}</b>
+          <span class="pill">Upgrades: <span class="mono">${fmt(sum)}</span></span>
+        </div>
+        <div class="muted" style="margin-top:6px;">
+          ${[1,2,3,4,5,6].map(s => `L${s}→L${s+1}: <span class="mono">${fmt(d.steps[s]||0)}</span>`).join(" · ")}
+        </div>
+      `;
+      box.appendChild(div);
+    }
+    if (!box.children.length) box.innerHTML = `<div class="muted">Keine Upgrades möglich (oder alles unter 3 pro Level).</div>`;
+  }
+
+  function renderCosts(costs, totalUpgrades) {
+    $("cDG").textContent = fmt(costs.dg);
+    $("cGold").textContent = fmt(costs.gold);
+    $("cDFG").textContent = fmt(costs.dfg);
+    $("cCC").textContent = fmt(costs.cc);
+    $("cUB").textContent = fmt(costs.ub);
+    $("cUp").textContent = fmt(totalUpgrades);
+  }
+
+  // ---- Storage
+  const STORAGE_KEY = "hr_stone_calc_inventory_v1";
+  function autosave() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(readInventoryFromInputs()));
+      $("autosaveState").textContent = "AN";
+      $("autosaveState").className = "ok";
+    } catch {
+      $("autosaveState").textContent = "FEHLER";
+      $("autosaveState").className = "warn";
+    }
+  }
+  function save() {
+    autosave();
+    $("saveBtn").textContent = "Gespeichert ✓";
+    setTimeout(()=> $("saveBtn").textContent = "Speichern", 900);
+  }
+  function load() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try { writeInventoryToInputs(JSON.parse(raw)); } catch {}
+  }
+  function clearAll() {
+    localStorage.removeItem(STORAGE_KEY);
+    writeInventoryToInputs(Object.fromEntries(ALL_TYPES.map(t => [t, Array(8).fill(0)])));
+    writeOutputInventory(Object.fromEntries(ALL_TYPES.map(t => [t, Array(8).fill(0)])));
+    renderCosts({dg:0,gold:0,dfg:0,cc:0,ub:0}, 0);
+    $("detailsBox").innerHTML = `<div class="muted">Gelöscht.</div>`;
+    $("jsonBox").value = "";
+    $("importText").value = "";
+    $("ocrStatus").textContent = "Bereit.";
+    setOcrProgress(0);
+    stopClickImport();
+  }
+
+  // ---- JSON Export/Import
+  function exportJSON() {
+    const inv = readInventoryFromInputs();
+    const out = {};
+    for (const t of ALL_TYPES) out[t] = inv[t].slice(1,8);
+    $("jsonBox").value = JSON.stringify(out, null, 2);
+  }
+  function importJSON() {
+    const txt = $("jsonBox").value.trim();
+    if (!txt) return;
+    try {
+      const obj = JSON.parse(txt);
+      const inv = {};
+      for (const t of ALL_TYPES) {
+        const arr = Array(8).fill(0);
+        const src = obj[t] || [];
+        for (let i=1; i<=7; i++) arr[i] = parseIntSafe(src[i-1] ?? 0);
+        inv[t] = arr;
+      }
+      writeInventoryToInputs(inv);
+      autosave();
+    } catch {
+      alert("Import fehlgeschlagen: Ungültiges JSON.");
+    }
+  }
+
+  // ---- Text Import (nur wenn Live-Text sauber ist)
+  function applyTextImport(text) {
+    const target = $("importMode").value;
+    const raw = (text || "").trim();
+    if (!raw) { alert("Kein Text vorhanden."); return; }
+
+    // robustes Muster: st 1 32 / st.1:32 / St. 7 2 / Stück optional
+    const re = /\bst\.?\s*([1-7])\s*[:\-]?\s*(\d{1,4}(?:[.,]\d{3})*|\d+)\b/gi;
+    const levels = Array(7).fill(null);
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      const lvl = parseInt(m[1], 10);
+      const val = parseIntSafe(m[2]);
+      levels[lvl-1] = val;
+    }
+
+    if (levels.some(v => v === null)) {
+      alert("Text-Import: Es fehlen Levelwerte (St.1…St.7). Für Game-Screens ist Klick-Import meist besser.");
+      return;
+    }
+
+    applyLevelsToType(target, levels);
+    autosave(); $("calcBtn").click();
+    $("ocrStatus").textContent = `Text-Import ok: ${target}`;
+  }
+
+  function applyLevelsToType(type, nums7) {
+    for (let lvl=1; lvl<=7; lvl++) {
+      const inp = invBody.querySelector(`input.num[data-type="${type}"][data-lvl="${lvl}"]`);
+      if (inp) inp.value = nums7[lvl-1] ? String(nums7[lvl-1]) : "";
+    }
+  }
+
+  // ---- Canvas Image Handling
+  const canvas = $("imgCanvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  let loadedImage = null;
+
+  $("imgFile").addEventListener("change", async () => {
+    const file = $("imgFile").files && $("imgFile").files[0];
+    if (!file) return;
+    await loadImageToCanvas(file);
+  });
+
+  async function loadImageToCanvas(file) {
+    stopClickImport();
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      loadedImage = img;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      $("ocrStatus").textContent = `Bild geladen: ${img.naturalWidth}×${img.naturalHeight}`;
+    };
+    img.src = url;
+  }
+
+  // ---- OCR progress
+  function setOcrProgress(p) {
+    const pct = Math.max(0, Math.min(100, Math.round(p * 100)));
+    $("ocrBar").style.width = pct + "%";
+  }
+
+  // ---- Whole image OCR (debug only)
+  async function readWholeImageOcr() {
+    if (!loadedImage) { alert("Bitte erst ein Bild laden."); return; }
+    $("readWholeOcrBtn").disabled = true;
+    $("ocrStatus").textContent = "OCR (Ganzes Bild) läuft…";
+    setOcrProgress(0);
+
+    try {
+      const blob = await canvasToBlob(canvas);
+      const { data } = await Tesseract.recognize(blob, "deu+eng", {
+        logger: m => {
+          if (m.status === "recognizing text" && typeof m.progress === "number") {
+            setOcrProgress(m.progress);
+            $("ocrStatus").textContent = `OCR läuft… ${Math.round(m.progress*100)}%`;
+          }
+        }
+      });
+      $("importText").value = (data?.text || "").trim();
+      $("ocrStatus").textContent = "OCR fertig (Ganzes Bild).";
+      setOcrProgress(1);
+    } catch (e) {
+      console.error(e);
+      alert("OCR Fehler (Ganzes Bild). Klick-Import ist zuverlässiger.");
+      $("ocrStatus").textContent = "OCR Fehler.";
+      setOcrProgress(0);
+    } finally {
+      $("readWholeOcrBtn").disabled = false;
+    }
+  }
+
+  function canvasToBlob(cnv) {
+    return new Promise((resolve) => cnv.toBlob(resolve, "image/png"));
+  }
+
+  // ============================
+  // ✅ CLICK-IMPORT (Badge OCR)
+  // ============================
+  let clickImportActive = false;
+  let clickImportType = "Red";
+  let clickImportLevel = 1; // 1..7
+  let clickResults = Array(7).fill(null);
+  let clickBusy = false;
+
+  function startClickImport() {
+    if (!loadedImage) { alert("Bitte erst ein Bild laden."); return; }
+    clickImportActive = true;
+    clickImportType = $("importMode").value;
+    clickImportLevel = 1;
+    clickResults = Array(7).fill(null);
+    $("clickHelp").innerHTML = `Klick-Import: <span class="mono">AN</span> — Ziel: <span class="mono">${clickImportType}</span> — bitte auf Zahl-Badge von <b>St.${clickImportLevel}</b> klicken.`;
+    $("ocrStatus").textContent = "Klick-Import bereit.";
+    drawOverlay();
+  }
+
+  function stopClickImport() {
+    clickImportActive = false;
+    clickBusy = false;
+    clickImportLevel = 1;
+    clickResults = Array(7).fill(null);
+    $("clickHelp").innerHTML = `Klick-Import: <span class="mono">aus</span> (lade ein Bild und drücke „Klick-Import starten“)`;
+    if (loadedImage) ctx.drawImage(loadedImage, 0, 0);
+  }
+
+  function drawOverlay() {
+    if (!loadedImage) return;
+    ctx.drawImage(loadedImage, 0, 0);
+
+    if (!clickImportActive) return;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, canvas.width, Math.max(60, canvas.height * 0.06));
+    ctx.fillStyle = "white";
+    ctx.font = `${Math.max(18, Math.floor(canvas.width*0.02))}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.fillText(`Klick-Import: ${clickImportType} — klicke Badge für St.${clickImportLevel}`, 16, Math.max(32, Math.floor(canvas.height*0.035)));
+    ctx.restore();
+  }
+
+  canvas.addEventListener("click", async (ev) => {
+    if (!clickImportActive) return;
+    if (!loadedImage) return;
+    if (clickBusy) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((ev.clientX - rect.left) * scaleX);
+    const y = Math.round((ev.clientY - rect.top) * scaleY);
+
+    clickBusy = true;
+    try {
+      $("ocrStatus").textContent = `Lese Zahl für St.${clickImportLevel}…`;
+      setOcrProgress(0);
+
+      const val = await ocrNumberAtPoint(x, y);
+      if (val === null) {
+        $("ocrStatus").textContent = `Konnte Zahl nicht lesen. Klick bitte nochmal exakt auf die Zahl.`;
+        clickBusy = false;
+        return;
+      }
+
+      clickResults[clickImportLevel - 1] = val;
+      $("ocrStatus").textContent = `St.${clickImportLevel} erkannt: ${val}`;
+      setOcrProgress(1);
+
+      clickImportLevel++;
+      if (clickImportLevel <= 7) {
+        $("clickHelp").innerHTML = `Klick-Import: <span class="mono">AN</span> — Ziel: <span class="mono">${clickImportType}</span> — bitte auf Zahl-Badge von <b>St.${clickImportLevel}</b> klicken.`;
+        drawOverlay();
+      } else {
+        applyLevelsToType(clickImportType, clickResults.map(v => v ?? 0));
+        autosave(); $("calcBtn").click();
+        $("ocrStatus").textContent = `Klick-Import fertig: ${clickImportType} übernommen (${clickResults.join(", ")}).`;
+        stopClickImport();
+      }
+    } finally {
+      clickBusy = false;
+    }
+  });
+
+  // ✅ NEW: smaller crop + center-biased word selection
+  async function ocrNumberAtPoint(cx, cy) {
+    // Kleiner Crop, damit nicht "812/163" etc. mit reinrutschen
+    const baseW = Math.min(120, Math.round(canvas.width * 0.06));
+    const baseH = Math.min(90,  Math.round(canvas.height * 0.05));
+
+    const x0 = Math.max(0, cx - Math.floor(baseW / 2));
+    const y0 = Math.max(0, cy - Math.floor(baseH / 2));
+    const x1 = Math.min(canvas.width,  x0 + baseW);
+    const y1 = Math.min(canvas.height, y0 + baseH);
+
+    const w = x1 - x0;
+    const h = y1 - y0;
+
+    const off = document.createElement("canvas");
+    const scale = 5;
+    off.width = w * scale;
+    off.height = h * scale;
+    const octx = off.getContext("2d", { willReadFrequently: true });
+
+    octx.imageSmoothingEnabled = false;
+    octx.drawImage(canvas, x0, y0, w, h, 0, 0, off.width, off.height);
+
+    // Preprocess
+    const imgData = octx.getImageData(0, 0, off.width, off.height);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i+1], b = data[i+2];
+      let gray = (0.299*r + 0.587*g + 0.114*b);
+      gray = (gray - 128) * 2.0 + 128;
+      gray = Math.max(0, Math.min(255, gray));
+      const v = gray > 165 ? 255 : 0;
+      data[i] = data[i+1] = data[i+2] = v;
+    }
+    octx.putImageData(imgData, 0, 0);
+
+    const blob = await new Promise(res => off.toBlob(res, "image/png"));
+
+    const { data: ocr } = await Tesseract.recognize(blob, "eng", {
+      logger: m => {
+        if (m.status === "recognizing text" && typeof m.progress === "number") setOcrProgress(m.progress);
+      },
+      tessedit_char_whitelist: "0123456789",
+      tessedit_pageseg_mode: "8" // single word
+    });
+
+    const cx2 = off.width / 2;
+    const cy2 = off.height / 2;
+
+    const candidates = (ocr?.words || [])
+      .map(w => {
+        const txt = (w.text || "").trim();
+        const m = txt.match(/\d+/);
+        if (!m) return null;
+        const digits = m[0].slice(0, 4);
+        const x = ((w.bbox?.x0 ?? 0) + (w.bbox?.x1 ?? 0)) / 2;
+        const y = ((w.bbox?.y0 ?? 0) + (w.bbox?.y1 ?? 0)) / 2;
+        const dx = x - cx2, dy = y - cy2;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        const conf = (w.confidence ?? 0);
+        return { digits, dist, conf };
+      })
+      .filter(Boolean);
+
+    if (candidates.length) {
+      candidates.sort((a,b) => (a.dist - a.conf*2) - (b.dist - b.conf*2));
+      const val = parseInt(candidates[0].digits, 10);
+      if (Number.isFinite(val)) return val;
+    }
+
+    const txt = (ocr?.text || "").trim();
+    const digits = (txt.match(/\d+/g) || []).join("");
+    if (!digits) return null;
+
+    const mm = digits.match(/^\d{1,4}/);
+    if (!mm) return null;
+    return parseInt(mm[0], 10);
+  }
+
+  // ---- Actions wiring
+  $("calcBtn").addEventListener("click", () => {
+    const inv = readInventoryFromInputs();
+    const res = compute(inv);
+    writeOutputInventory(res.out);
+    renderCosts(res.totalCosts, res.totalUpgrades);
+    renderDetails(res.details);
+    autosave();
+  });
+
+  $("saveBtn").addEventListener("click", save);
+  $("loadBtn").addEventListener("click", load);
+  $("clearBtn").addEventListener("click", () => {
+    if (confirm("Wirklich alles löschen?")) clearAll();
+  });
+
+  $("exportBtn").addEventListener("click", exportJSON);
+  $("importBtn").addEventListener("click", importJSON);
+
+  $("applyTextBtn").addEventListener("click", () => applyTextImport($("importText").value));
+  $("readWholeOcrBtn").addEventListener("click", readWholeImageOcr);
+
+  $("startClickImportBtn").addEventListener("click", startClickImport);
+  $("cancelClickImportBtn").addEventListener("click", stopClickImport);
+
+  // initial
+  load();
+  $("calcBtn").click();
+</script>
+</body>
+</html>
