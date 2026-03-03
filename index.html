@@ -30,13 +30,14 @@
     .pill { display:inline-flex; align-items:center; gap:6px; padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); background:#0b1220; font-size: 12px; color: var(--muted); }
     .ok { color: #86efac; }
     .warn { color: #fca5a5; }
+    .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--txt); }
 
     table { width: 100%; border-collapse: collapse; }
     thead th { position: sticky; top: 0; background: rgba(17,24,39,.98); z-index: 1; }
     th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 13px; text-align: center; }
     th:first-child, td:first-child { text-align: left; padding-left: 10px; }
     .type { font-weight: 700; }
-    .muted { color: var(--muted); }
     input.num {
       width: 72px; max-width: 100%;
       padding: 7px 8px; border-radius: 10px; border: 1px solid var(--line);
@@ -44,17 +45,15 @@
     }
     input.num:focus { outline: 2px solid rgba(34,197,94,.35); border-color: rgba(34,197,94,.6); }
 
+    details { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background:#0b1220; }
+    summary { cursor: pointer; padding: 10px 12px; font-weight: 700; }
+    .details-body { padding: 10px 12px 12px; color: var(--muted); font-size: 12px; }
+
+    /* Costs */
     .costs { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     @media (max-width: 980px) { .costs { grid-template-columns: 1fr; } }
     .kv { display:flex; justify-content: space-between; gap:10px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: #0b1220; }
     .kv b { font-variant-numeric: tabular-nums; }
-
-    details { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background:#0b1220; }
-    summary { cursor: pointer; padding: 10px 12px; font-weight: 700; }
-    .details-body { padding: 10px 12px 12px; color: var(--muted); font-size: 12px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--txt); }
-    textarea { width:100%; min-height: 110px; border-radius: 12px; border: 1px solid var(--line); background:#0b1220; color: var(--txt); padding: 10px; }
-    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
 
     /* Screenshot Import UI */
     .import-grid { display:grid; grid-template-columns: 1fr; gap:10px; }
@@ -101,6 +100,9 @@
     .goal-table input.num { width: 90px; }
     .goal-badge { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border:1px solid var(--line); border-radius:999px; background:#0b1220; color:var(--muted); font-size:12px; }
     .goal-status { font-weight:800; }
+    .txt-ok { color: #86efac; font-weight: 700; }
+    .txt-warn { color: #fca5a5; font-weight: 700; }
+    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
   </style>
 </head>
 <body>
@@ -194,16 +196,22 @@
     <div class="card">
       <h2 style="margin:0 0 8px; font-size:15px;">Ergebnis</h2>
 
-      <div class="costs" style="margin-bottom:10px;">
-        <div class="kv"><span>Dungeon Gems</span><b id="cDG">0</b></div>
-        <div class="kv"><span>Gold</span><b id="cGold">0</b></div>
-        <div class="kv"><span>Dark Forest Gems</span><b id="cDFG">0</b></div>
-        <div class="kv"><span>Champion Coins</span><b id="cCC">0</b></div>
-        <div class="kv"><span>Underground Brains</span><b id="cUB">0</b></div>
-        <div class="kv"><span>Total Upgrades</span><b id="cUp">0</b></div>
-      </div>
-
+      <!-- ✅ jetzt einklappbar -->
       <details open>
+        <summary>Kostenübersicht</summary>
+        <div class="details-body">
+          <div class="costs">
+            <div class="kv"><span>Dungeon Gems</span><b id="cDG">0</b></div>
+            <div class="kv"><span>Gold</span><b id="cGold">0</b></div>
+            <div class="kv"><span>Dark Forest Gems</span><b id="cDFG">0</b></div>
+            <div class="kv"><span>Champion Coins</span><b id="cCC">0</b></div>
+            <div class="kv"><span>Underground Brains</span><b id="cUB">0</b></div>
+            <div class="kv"><span>Total Upgrades</span><b id="cUp">0</b></div>
+          </div>
+        </div>
+      </details>
+
+      <details style="margin-top:10px;" open>
         <summary>Neues Inventar (nach Upgrades)</summary>
         <div class="details-body">
           <div style="overflow:auto; border-radius: 10px; border: 1px solid var(--line);">
@@ -232,7 +240,7 @@
         <div class="details-body">
           <div class="goal-grid">
             <div class="small">
-              Hier gibst du ein, wie viele <b>L7</b> du am Ende pro Typ willst. Er rechnet die <b>minimal nötigen</b> Upgrades + Kosten, basierend auf deinem aktuellen Inventar (Tabelle links).
+              Ziele sind <b>L7</b>-Anzahl pro Typ. Er rechnet die <b>minimal nötigen</b> Upgrades + Kosten basierend auf deinem aktuellen Inventar.
             </div>
 
             <div style="overflow:auto; border-radius: 10px; border: 1px solid var(--line);">
@@ -253,23 +261,22 @@
               <button class="btn" id="goalClearBtn">Ziele löschen</button>
             </div>
 
-            <div class="small"><b>Optional:</b> Deine aktuellen Ressourcen (damit er “reicht / reicht nicht” sagen kann)</div>
+            <div class="small"><b>Optional:</b> Deine aktuellen Ressourcen</div>
             <div class="costs">
-              <div class="kv"><span>Dungeon Gems (hast)</span><b><input class="num" id="haveDG" placeholder="0"></b></div>
-              <div class="kv"><span>Gold (hast)</span><b><input class="num" id="haveGold" placeholder="0"></b></div>
-              <div class="kv"><span>Dark Forest Gems (hast)</span><b><input class="num" id="haveDFG" placeholder="0"></b></div>
-              <div class="kv"><span>Champion Coins (hast)</span><b><input class="num" id="haveCC" placeholder="0"></b></div>
-              <div class="kv"><span>Underground Brains (hast)</span><b><input class="num" id="haveUB" placeholder="0"></b></div>
+              <div class="kv"><span>Dungeon Gems (IST)</span><b><input class="num" id="haveDG" placeholder="0"></b></div>
+              <div class="kv"><span>Gold (IST)</span><b><input class="num" id="haveGold" placeholder="0"></b></div>
+              <div class="kv"><span>Dark Forest Gems (IST)</span><b><input class="num" id="haveDFG" placeholder="0"></b></div>
+              <div class="kv"><span>Champion Coins (IST)</span><b><input class="num" id="haveCC" placeholder="0"></b></div>
+              <div class="kv"><span>Underground Brains (IST)</span><b><input class="num" id="haveUB" placeholder="0"></b></div>
               <div class="kv"><span>Hinweis</span><b class="mono">nur Check</b></div>
             </div>
 
             <div style="border:1px solid var(--line); border-radius:12px; padding:10px; background:#0b1220;">
               <div class="small" style="margin-bottom:6px;"><b>Plan-Ergebnis</b></div>
-              <div class="small" id="goalSummary" class="muted">Noch kein Plan berechnet.</div>
-              <div class="small" style="margin-top:8px;" id="goalMissing"></div>
+              <div class="small" id="goalSummary">Noch kein Plan berechnet.</div>
+              <div class="small" style="margin-top:8px;" id="goalStoneCheck"></div>
               <div class="small" style="margin-top:8px;" id="goalResources"></div>
             </div>
-
           </div>
         </div>
       </details>
@@ -553,8 +560,7 @@
     setOcrProgress(0);
     stopClickImport();
     clearGoals();
-    clearHave();
-    renderGoalEmpty();
+    clearGoalOutputsOnly();
   }
 
   // ---- Export/Import JSON
@@ -756,11 +762,8 @@
   }
 
   async function ocrNumberAtPoint(cx, cy) {
-    // Pass 1: größer (verhindert “halbe 8”)
     let r1 = await ocrWithCrop(cx, cy, 0.10, 0.08, 260, 180);
     if (r1.value !== null) return r1;
-
-    // Pass 2: extra groß
     let r2 = await ocrWithCrop(cx, cy, 0.14, 0.11, 360, 260);
     return r2;
   }
@@ -786,7 +789,6 @@
     octx.imageSmoothingEnabled = false;
     octx.drawImage(canvas, x0, y0, w, h, 0, 0, off.width, off.height);
 
-    // preprocess
     const imgData = octx.getImageData(0, 0, off.width, off.height);
     const data = imgData.data;
 
@@ -854,8 +856,7 @@
   function readGoalsL7() {
     const goals = {};
     goalBody.querySelectorAll("input.num").forEach(inp => {
-      const t = inp.dataset.goalType;
-      goals[t] = parseIntSafe(inp.value);
+      goals[inp.dataset.goalType] = parseIntSafe(inp.value);
     });
     return goals;
   }
@@ -864,42 +865,36 @@
     goalBody.querySelectorAll("input.num").forEach(inp => inp.value = "");
   }
 
-  function clearHave() {
-    ["haveDG","haveGold","haveDFG","haveCC","haveUB"].forEach(id => $(id).value = "");
-  }
-
-  function renderGoalEmpty() {
+  function clearGoalOutputsOnly() {
     $("goalStatus").textContent = "—";
     $("goalStatus").className = "goal-status muted";
     $("goalSummary").textContent = "Noch kein Plan berechnet.";
-    $("goalMissing").innerHTML = "";
+    $("goalStoneCheck").innerHTML = "";
     $("goalResources").innerHTML = "";
   }
 
   function goalPlan(inv, goalsL7) {
-    // For each type: minimal required upgrades to reach L7 target using existing L2..L7, and needing L1 if short.
     const plan = {
       costs: { dg:0, gold:0, dfg:0, cc:0, ub:0 },
-      upgradesByType: {}, // {type: {1:..6}}
-      missingL1: {}, // {type: number}
-      totalUpgrades: 0
+      totalUpgrades: 0,
+      stonesOk: true
     };
 
     for (const type of ALL_TYPES) {
       const target7 = Math.max(0, goalsL7[type] ?? 0);
+      if (target7 === 0) continue;
+
       const have = inv[type].slice(); // 0..7
       const req = Array(8).fill(0);
       req[7] = Math.max(0, target7 - have[7]);
-      for (let k=6; k>=1; k--) {
-        // only target L7 => need 3*req[k+1] stones at level k
-        req[k] = Math.max(0, 3*req[k+1] - have[k]);
-      }
+      for (let k=6; k>=1; k--) req[k] = Math.max(0, 3*req[k+1] - have[k]);
 
-      const upgrades = {};
+      // wenn wir L1 brauchen würden -> Inventar reicht nicht (wir listen NICHT wie viel)
+      if (req[1] > 0) plan.stonesOk = false;
+
       const stepCosts = costsForType(type);
       for (let step=1; step<=6; step++) {
-        const up = req[step+1]; // upgrades step->step+1
-        upgrades[step] = up;
+        const up = req[step+1];
         if (up > 0) {
           plan.totalUpgrades += up;
           const c = stepCosts[step] || {};
@@ -910,21 +905,23 @@
           plan.costs.ub   += (c.ub   || 0) * up;
         }
       }
-      plan.upgradesByType[type] = upgrades;
-      if (req[1] > 0) plan.missingL1[type] = req[1];
     }
     return plan;
   }
 
   function renderGoalPlan(plan) {
-    const anyGoal = Object.values(readGoalsL7()).some(v => v > 0);
-    if (!anyGoal) { renderGoalEmpty(); return; }
+    $("goalSummary").innerHTML =
+      `Benötigte Upgrades (minimal): <b class="mono">${fmt(plan.totalUpgrades)}</b><br>` +
+      `Kosten: DG <b class="mono">${fmt(plan.costs.dg)}</b>, Gold <b class="mono">${fmt(plan.costs.gold)}</b>, DFG <b class="mono">${fmt(plan.costs.dfg)}</b>, CC <b class="mono">${fmt(plan.costs.cc)}</b>, Brains <b class="mono">${fmt(plan.costs.ub)}</b>`;
 
-    // Status: by stones (missing L1?) and by resources (if provided)
-    const missingTypes = Object.keys(plan.missingL1);
-    const missingStones = missingTypes.length > 0;
+    // ✅ Stein-Check (ohne L1-Liste)
+    if (plan.stonesOk) {
+      $("goalStoneCheck").innerHTML = `<span class="txt-ok">✓ Dein Stein-Inventar reicht für die Ziele.</span>`;
+    } else {
+      $("goalStoneCheck").innerHTML = `<span class="txt-warn">✗ Dein Stein-Inventar reicht nicht aus (es fehlen Basissteine / Zwischenstufen für das Ziel).</span>`;
+    }
 
-    // resources check (optional)
+    // Ressourcen-Check (SOLL/IST + Farben)
     const have = {
       dg: parseIntSafe($("haveDG").value),
       gold: parseIntSafe($("haveGold").value),
@@ -933,68 +930,55 @@
       ub: parseIntSafe($("haveUB").value)
     };
     const anyHaveEntered = Object.values(have).some(v => v > 0);
-    let resOk = true;
-    let resLines = [];
-    if (anyHaveEntered) {
+
+    if (!anyHaveEntered) {
+      $("goalResources").innerHTML = `<span class="muted">Ressourcen-Check: trage oben optional deine Ressourcen ein.</span>`;
+    } else {
       const need = plan.costs;
-      const diff = {
-        dg: have.dg - need.dg,
-        gold: have.gold - need.gold,
-        dfg: have.dfg - need.dfg,
-        cc: have.cc - need.cc,
-        ub: have.ub - need.ub
-      };
-      const keys = [
+      const rows = [
         ["Dungeon Gems","dg"],
         ["Gold","gold"],
         ["Dark Forest Gems","dfg"],
         ["Champion Coins","cc"],
         ["Underground Brains","ub"]
       ];
-      for (const [label,k] of keys) {
-        if (need[k] <= 0 && have[k] <= 0) continue;
-        if (diff[k] < 0) resOk = false;
-        resLines.push(`${label}: brauchst <span class="mono">${fmt(need[k])}</span> · hast <span class="mono">${fmt(have[k])}</span> · ${diff[k] >= 0 ? 'übrig' : 'fehlt'} <span class="mono">${fmt(Math.abs(diff[k]))}</span>`);
-      }
-      $("goalResources").innerHTML = `<div class="small"><b>Ressourcen-Check</b></div><div class="small">${resLines.join("<br>")}</div>`;
-    } else {
-      $("goalResources").innerHTML = `<div class="small muted">Ressourcen-Check: trage oben optional deine Ressourcen ein.</div>`;
+
+      let anyMissing = false;
+      const lines = rows.map(([label,k]) => {
+        const diff = have[k] - need[k];
+        const diffAbs = Math.abs(diff);
+        const diffTxt = diff >= 0
+          ? `<span class="txt-ok">ÜBRIG</span> <span class="mono txt-ok">${fmt(diffAbs)}</span>`
+          : `<span class="txt-warn">FEHLT</span> <span class="mono txt-warn">${fmt(diffAbs)}</span>`;
+        if (diff < 0) anyMissing = true;
+
+        return `${label}: SOLL <span class="mono">${fmt(need[k])}</span> · IST <span class="mono txt-ok">${fmt(have[k])}</span> · ${diffTxt}`;
+      });
+
+      $("goalResources").innerHTML =
+        `<div class="${anyMissing ? 'txt-warn' : 'txt-ok'}" style="margin-bottom:6px;">${anyMissing ? '✗ Ressourcen reichen nicht vollständig.' : '✓ Ressourcen reichen.'}</div>` +
+        `<div class="small">${lines.join("<br>")}</div>`;
     }
 
-    // Summary
-    $("goalSummary").innerHTML =
-      `Benötigte Upgrades (minimal): <b class="mono">${fmt(plan.totalUpgrades)}</b><br>` +
-      `Kosten: DG <b class="mono">${fmt(plan.costs.dg)}</b>, Gold <b class="mono">${fmt(plan.costs.gold)}</b>, DFG <b class="mono">${fmt(plan.costs.dfg)}</b>, CC <b class="mono">${fmt(plan.costs.cc)}</b>, Brains <b class="mono">${fmt(plan.costs.ub)}</b>`;
-
-    // Missing L1
-    if (missingStones) {
-      const list = missingTypes
-        .map(t => `${t}: fehlende L1 <span class="mono">${fmt(plan.missingL1[t])}</span>`)
-        .join("<br>");
-      $("goalMissing").innerHTML =
-        `<div class="small"><b>Fehlende Basissteine (L1)</b></div>` +
-        `<div class="small warn">${list}</div>`;
-    } else {
-      $("goalMissing").innerHTML =
-        `<div class="small ok"><b>Stein-Seite:</b> mit deinem Inventar sind die Ziele grundsätzlich craftbar (keine fehlenden L1 nötig).</div>`;
-    }
-
-    // Global status
+    // Status-Badge
     let statusText = "OK";
     let statusClass = "goal-status ok";
-    if (missingStones) { statusText = "Fehlende L1"; statusClass = "goal-status warn"; }
-    if (anyHaveEntered && !resOk) { statusText = "Ressourcen fehlen"; statusClass = "goal-status warn"; }
-    if (missingStones && anyHaveEntered && !resOk) { statusText = "L1 + Ressourcen fehlen"; statusClass = "goal-status warn"; }
+    const resMissing = (() => {
+      const anyHaveEntered2 = Object.values(have).some(v => v > 0);
+      if (!anyHaveEntered2) return false;
+      return (have.dg - plan.costs.dg) < 0 ||
+             (have.gold - plan.costs.gold) < 0 ||
+             (have.dfg - plan.costs.dfg) < 0 ||
+             (have.cc - plan.costs.cc) < 0 ||
+             (have.ub - plan.costs.ub) < 0;
+    })();
+
+    if (!plan.stonesOk && !resMissing) { statusText = "Steine fehlen"; statusClass = "goal-status warn"; }
+    if (plan.stonesOk && resMissing) { statusText = "Ressourcen fehlen"; statusClass = "goal-status warn"; }
+    if (!plan.stonesOk && resMissing) { statusText = "Steine + Ressourcen fehlen"; statusClass = "goal-status warn"; }
+
     $("goalStatus").textContent = statusText;
     $("goalStatus").className = statusClass;
-  }
-
-  function clearGoalOutputsOnly() {
-    $("goalSummary").textContent = "Noch kein Plan berechnet.";
-    $("goalMissing").innerHTML = "";
-    $("goalResources").innerHTML = "";
-    $("goalStatus").textContent = "—";
-    $("goalStatus").className = "goal-status muted";
   }
 
   // ---- Actions wiring
@@ -1022,6 +1006,8 @@
   $("goalCalcBtn").addEventListener("click", () => {
     const inv = readInventoryFromInputs();
     const goals = readGoalsL7();
+    const anyGoal = Object.values(goals).some(v => v > 0);
+    if (!anyGoal) { clearGoalOutputsOnly(); return; }
     const plan = goalPlan(inv, goals);
     renderGoalPlan(plan);
   });
@@ -1034,7 +1020,7 @@
   // initial
   load();
   $("calcBtn").click();
-  renderGoalEmpty();
+  clearGoalOutputsOnly();
 </script>
 </body>
 </html>
