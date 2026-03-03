@@ -127,7 +127,7 @@
           <div class="import-grid">
             <div class="small">
               Lade einen Screenshot hoch → „Klick-Import starten“ → dann exakt auf die <b>Ziffern im Badge</b> tippen.<br>
-              Danach erscheint eine Bestätigung (Übernehmen / Neu lesen), damit keine Fehlwerte reinrutschen.
+              Danach: Bestätigung (Übernehmen / Neu klicken) damit keine Fehlwerte reinrutschen.
             </div>
 
             <div class="import-top">
@@ -241,13 +241,13 @@
     <div class="modal-hd" id="confirmTitle">Zahl übernehmen?</div>
     <div class="modal-bd">
       Erkannte Zahl für <b id="confirmType">Type</b> / <b id="confirmLevel">St.X</b>: <b id="confirmValue">0</b>
-      <div class="small" style="margin-top:6px;">Wenn’s falsch ist: „Neu lesen“ und nochmal exakt auf die Ziffer klicken.</div>
+      <div class="small" style="margin-top:6px;">Wenn’s falsch ist: „Neu klicken“ und nochmal exakt auf die Ziffer tippen.</div>
       <div class="modal-img">
         <img id="confirmImg" alt="OCR Ausschnitt">
       </div>
     </div>
     <div class="modal-ft">
-      <button class="btn" id="confirmRetry">Neu lesen</button>
+      <button class="btn" id="confirmRetry">Neu klicken</button>
       <button class="btn primary" id="confirmAccept">Übernehmen</button>
     </div>
   </div>
@@ -540,9 +540,7 @@
   let clickImportActive = false;
   let clickImportType = "Red";
   let clickImportLevel = 1; // 1..7
-  let clickResults = Array(7).fill(null);
   let clickBusy = false;
-  let lastTap = null; // for Retry
   let history = [];   // undo stack: {type, level, prevValue}
 
   function startClickImport() {
@@ -550,7 +548,6 @@
     clickImportActive = true;
     clickImportType = $("importMode").value;
     clickImportLevel = 1;
-    clickResults = Array(7).fill(null);
     history = [];
     $("ocrStatus").textContent = "Klick-Import bereit.";
     $("clickHelp").innerHTML = `Klick-Import: <span class="mono">AN</span> — Ziel: <span class="mono">${clickImportType}</span> — bitte auf Badge-Zahl von <b>St.${clickImportLevel}</b> klicken.`;
@@ -561,8 +558,6 @@
     clickImportActive = false;
     clickBusy = false;
     clickImportLevel = 1;
-    clickResults = Array(7).fill(null);
-    lastTap = null;
     $("clickHelp").innerHTML = `Klick-Import: <span class="mono">aus</span> (lade ein Bild und drücke „Klick-Import starten“)`;
     if (loadedImage) ctx.drawImage(loadedImage, 0, 0);
     closeConfirm();
@@ -582,97 +577,16 @@
     ctx.restore();
   }
 
-  function applyLevelsToType(type, nums7) {
-    for (let lvl=1; lvl<=7; lvl++) {
-      const inp = invBody.querySelector(`input.num[data-type="${type}"][data-lvl="${lvl}"]`);
-      if (inp) inp.value = nums7[lvl-1] ? String(nums7[lvl-1]) : "";
-    }
-  }
-
-  // ✅ pointerdown statt click (iOS)
-  canvas.addEventListener("pointerdown", async (ev) => {
-    if (!clickImportActive) return;
-    if (!loadedImage) return;
-    if (clickBusy) return;
-    ev.preventDefault();
-
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = Math.round((ev.clientX - rect.left) * scaleX);
-    const y = Math.round((ev.clientY - rect.top) * scaleY);
-
-    lastTap = {x, y, level: clickImportLevel, type: clickImportType};
-    await tryReadAtTap();
-  });
-
-  async function tryReadAtTap() {
-    if (!lastTap) return;
-    clickBusy = true;
-
-    try {
-      $("ocrStatus").textContent = `Lese Zahl für St.${lastTap.level}…`;
-      setOcrProgress(0);
-
-      const res = await ocrNumberAtPoint(lastTap.x, lastTap.y);
-      if (!res || res.value === null) {
-        $("ocrStatus").textContent = `Konnte Zahl nicht lesen. Klick bitte nochmal exakt auf die Ziffer.`;
-        clickBusy = false;
-        return;
-      }
-
-      // modal confirm
-      openConfirm({
-        type: lastTap.type,
-        level: lastTap.level,
-        value: res.value,
-        previewUrl: res.previewUrl
-      });
-      setOcrProgress(1);
-      $("ocrStatus").textContent = `Erkannt: ${res.value} (Warte auf Bestätigung)`;
-    } finally {
-      clickBusy = false;
-    }
-  }
-
-  // ---- Confirm modal logic
-  function openConfirm({type, level, value, previewUrl}) {
-    $("confirmType").textContent = type;
-    $("confirmLevel").textContent = `St.${level}`;
-    $("confirmValue").textContent = value;
-    $("confirmImg").src = previewUrl;
-    $("confirmTitle").textContent = "Zahl übernehmen?";
-    $("confirmBackdrop").style.display = "flex";
-
-    $("confirmAccept").onclick = () => {
-      closeConfirm();
-      acceptValue(type, level, value);
-    };
-    $("confirmRetry").onclick = async () => {
-      closeConfirm();
-      await tryReadAtTap(); // re-read same tap
-    };
-  }
-  function closeConfirm() {
-    $("confirmBackdrop").style.display = "none";
-    $("confirmImg").src = "";
-  }
-
   function acceptValue(type, level, value) {
-    // Store history for undo (inventory field)
     const inp = invBody.querySelector(`input.num[data-type="${type}"][data-lvl="${level}"]`);
     const prev = inp ? parseIntSafe(inp.value) : 0;
     history.push({type, level, prev});
 
-    // Keep clickResults also (for end summary)
-    clickResults[level-1] = value;
     if (inp) inp.value = value ? String(value) : "";
-
     autosave();
     $("calcBtn").click();
 
-    // advance
-    if (level === clickImportLevel) clickImportLevel++;
+    clickImportLevel++;
     if (clickImportLevel <= 7) {
       $("clickHelp").innerHTML = `Klick-Import: <span class="mono">AN</span> — Ziel: <span class="mono">${clickImportType}</span> — bitte auf Badge-Zahl von <b>St.${clickImportLevel}</b> klicken.`;
       drawOverlay();
@@ -688,8 +602,6 @@
     if (!last) return;
     const inp = invBody.querySelector(`input.num[data-type="${last.type}"][data-lvl="${last.level}"]`);
     if (inp) inp.value = last.prev ? String(last.prev) : "";
-    clickResults[last.level-1] = null;
-    // Step zurück, wenn wir schon weiter waren
     clickImportLevel = Math.min(clickImportLevel, last.level);
     autosave();
     $("calcBtn").click();
@@ -700,11 +612,83 @@
     }
   });
 
-  // ✅ OCR function: small crop + center-biased selection + preview
+  // ✅ pointerdown statt click (iOS)
+  canvas.addEventListener("pointerdown", async (ev) => {
+    if (!clickImportActive || !loadedImage || clickBusy) return;
+    ev.preventDefault();
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = Math.round((ev.clientX - rect.left) * scaleX);
+    const y = Math.round((ev.clientY - rect.top) * scaleY);
+
+    clickBusy = true;
+    try {
+      $("ocrStatus").textContent = `Lese Zahl für St.${clickImportLevel}…`;
+      setOcrProgress(0);
+
+      const res = await ocrNumberAtPoint(x, y);
+      if (!res || res.value === null) {
+        $("ocrStatus").textContent = `Konnte Zahl nicht lesen. Klick bitte nochmal exakt auf die Ziffer.`;
+        setOcrProgress(0);
+        return;
+      }
+
+      openConfirm({
+        type: clickImportType,
+        level: clickImportLevel,
+        value: res.value,
+        previewUrl: res.previewUrl
+      });
+
+      setOcrProgress(1);
+      $("ocrStatus").textContent = `Erkannt: ${res.value} (Warte auf Bestätigung)`;
+    } finally {
+      clickBusy = false;
+    }
+  });
+
+  // ---- Confirm modal logic
+  function openConfirm({type, level, value, previewUrl}) {
+    $("confirmType").textContent = type;
+    $("confirmLevel").textContent = `St.${level}`;
+    $("confirmValue").textContent = value;
+    $("confirmImg").src = previewUrl;
+    $("confirmBackdrop").style.display = "flex";
+
+    $("confirmAccept").onclick = () => {
+      closeConfirm();
+      acceptValue(type, level, value);
+    };
+
+    // ✅ Neu klicken: Modal zu, Level bleibt gleich, User klickt einfach neu
+    $("confirmRetry").onclick = () => {
+      closeConfirm();
+      $("ocrStatus").textContent = `Okay – bitte neu klicken für St.${clickImportLevel}.`;
+      setOcrProgress(0);
+      drawOverlay();
+    };
+  }
+  function closeConfirm() {
+    $("confirmBackdrop").style.display = "none";
+    $("confirmImg").src = "";
+  }
+
+  // ✅ Größerer Crop + 2-Pass (wenn unsicher -> noch größer)
   async function ocrNumberAtPoint(cx, cy) {
-    // kleiner Crop -> weniger "falsche große Zahlen"
-    const baseW = Math.min(120, Math.round(canvas.width * 0.06));
-    const baseH = Math.min(90,  Math.round(canvas.height * 0.05));
+    // Pass 1: groß (deutlich größer als vorher)
+    let r1 = await ocrWithCrop(cx, cy, 0.10, 0.08, 260, 180); // relative + max
+    if (r1.value !== null) return r1;
+
+    // Pass 2: extra groß (falls die Zahl abgeschnitten war)
+    let r2 = await ocrWithCrop(cx, cy, 0.14, 0.11, 360, 260);
+    return r2;
+  }
+
+  async function ocrWithCrop(cx, cy, relW, relH, maxW, maxH) {
+    const baseW = Math.min(maxW, Math.round(canvas.width  * relW));
+    const baseH = Math.min(maxH, Math.round(canvas.height * relH));
 
     const x0 = Math.max(0, cx - Math.floor(baseW / 2));
     const y0 = Math.max(0, cy - Math.floor(baseH / 2));
@@ -715,7 +699,7 @@
     const h = y1 - y0;
 
     const off = document.createElement("canvas");
-    const scale = 5;
+    const scale = 4; // etwas weniger als 5, weil Crop größer ist
     off.width = w * scale;
     off.height = h * scale;
     const octx = off.getContext("2d", { willReadFrequently: true });
@@ -738,7 +722,6 @@
     octx.putImageData(imgData, 0, 0);
 
     const previewUrl = off.toDataURL("image/png");
-
     const blob = await new Promise(res => off.toBlob(res, "image/png"));
 
     const { data: ocr } = await Tesseract.recognize(blob, "eng", {
@@ -782,9 +765,7 @@
       }
     }
 
-    // Schutz: extrem große Ausreißer eher ablehnen
     if (value !== null && value > 9999) value = null;
-
     return { value, previewUrl };
   }
 
