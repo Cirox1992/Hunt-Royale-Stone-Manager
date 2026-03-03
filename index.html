@@ -197,7 +197,6 @@
     <div class="card">
       <h2 style="margin:0 0 8px; font-size:15px;">Ergebnis</h2>
 
-      <!-- einklappbar -->
       <details open>
         <summary>Kostenübersicht</summary>
         <div class="details-body">
@@ -262,7 +261,7 @@
               <button class="btn" id="goalClearBtn">Ziele löschen</button>
             </div>
 
-            <div class="small"><b>Optional:</b> Deine aktuellen Ressourcen</div>
+            <div class="small"><b>Optional:</b> Deine aktuellen Ressourcen (werden jetzt lokal gespeichert)</div>
             <div class="costs">
               <div class="kv"><span>Dungeon Gems (IST)</span><b><input class="num" id="haveDG" placeholder="0"></b></div>
               <div class="kv"><span>Gold (IST)</span><b><input class="num" id="haveGold" placeholder="0"></b></div>
@@ -363,28 +362,27 @@
     return Math.floor(n);
   }
 
-  // ---- Last change tracking
+  // ---- Storage keys
   const STORAGE_KEY = "hr_stone_calc_inventory_v1";
   const STORAGE_TS_KEY = "hr_stone_calc_inventory_v1_lastchange";
+  const STORAGE_RES_KEY = "hr_stone_calc_resources_v1";
 
+  // ---- Last change tracking
   function nowStamp() {
     return new Intl.DateTimeFormat("de-DE", {
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit"
     }).format(new Date());
   }
-
   function setLastChange(ts) {
     const el = $("lastChange");
     if (el) el.textContent = ts || "—";
   }
-
   function touchLastChange() {
     const ts = nowStamp();
     try { localStorage.setItem(STORAGE_TS_KEY, ts); } catch {}
     setLastChange(ts);
   }
-
   function loadLastChange() {
     const ts = localStorage.getItem(STORAGE_TS_KEY);
     setLastChange(ts);
@@ -411,7 +409,7 @@
       inp.placeholder = "0";
       inp.dataset.type = type;
       inp.dataset.lvl = String(lvl);
-      inp.addEventListener("input", () => autosave());
+      inp.addEventListener("input", () => autosaveInventory());
       td.appendChild(inp);
       tr.appendChild(td);
     }
@@ -493,6 +491,54 @@
     });
   }
 
+  // ---- Resources I/O (NEW: persistent)
+  function readResourcesFromInputs() {
+    return {
+      dg: parseIntSafe($("haveDG").value),
+      gold: parseIntSafe($("haveGold").value),
+      dfg: parseIntSafe($("haveDFG").value),
+      cc: parseIntSafe($("haveCC").value),
+      ub: parseIntSafe($("haveUB").value),
+    };
+  }
+
+  function writeResourcesToInputs(res) {
+    $("haveDG").value = res?.dg ? String(res.dg) : "";
+    $("haveGold").value = res?.gold ? String(res.gold) : "";
+    $("haveDFG").value = res?.dfg ? String(res.dfg) : "";
+    $("haveCC").value = res?.cc ? String(res.cc) : "";
+    $("haveUB").value = res?.ub ? String(res.ub) : "";
+  }
+
+  function saveResources() {
+    try {
+      localStorage.setItem(STORAGE_RES_KEY, JSON.stringify(readResourcesFromInputs()));
+    } catch {}
+  }
+
+  function loadResources() {
+    const raw = localStorage.getItem(STORAGE_RES_KEY);
+    if (!raw) return;
+    try { writeResourcesToInputs(JSON.parse(raw)); } catch {}
+  }
+
+  // autosave resources on input
+  ["haveDG","haveGold","haveDFG","haveCC","haveUB"].forEach(id => {
+    const el = $(id);
+    el.addEventListener("input", () => {
+      saveResources();
+      // Ressourcen ändern ist auch "Änderung" (hilft beim Nachvollziehen)
+      touchLastChange();
+      // wenn bereits ein Plan existiert, sofort neu bewerten
+      // (kein Muss – aber praktisch)
+      const inv = readInventoryFromInputs();
+      const goals = readGoalsL7();
+      if (Object.values(goals).some(v => v > 0)) {
+        renderGoalPlan(goalPlan(inv, goals));
+      }
+    });
+  });
+
   // ---- Core "upgrade everything possible"
   function compute(inv) {
     const out = {};
@@ -559,11 +605,11 @@
     $("cUp").textContent = fmt(totalUpgrades);
   }
 
-  // ---- LocalStorage
-  function autosave() {
+  // ---- LocalStorage save/load (Inventory)
+  function autosaveInventory() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(readInventoryFromInputs()));
-      touchLastChange(); // ✅ update timestamp
+      touchLastChange();
       $("autosaveState").textContent = "AN";
       $("autosaveState").className = "ok";
     } catch {
@@ -573,7 +619,8 @@
   }
 
   function save() {
-    autosave();
+    autosaveInventory();
+    saveResources();
     $("saveBtn").textContent = "Gespeichert ✓";
     setTimeout(()=> $("saveBtn").textContent = "Speichern", 900);
   }
@@ -587,10 +634,13 @@
   function clearAll() {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_TS_KEY);
+    localStorage.removeItem(STORAGE_RES_KEY);
     setLastChange(null);
 
     writeInventoryToInputs(Object.fromEntries(ALL_TYPES.map(t => [t, Array(8).fill(0)])));
     writeOutputInventory(Object.fromEntries(ALL_TYPES.map(t => [t, Array(8).fill(0)])));
+    writeResourcesToInputs({dg:0,gold:0,dfg:0,cc:0,ub:0});
+
     renderCosts({dg:0,gold:0,dfg:0,cc:0,ub:0}, 0);
     $("detailsBox").innerHTML = `<div class="muted">Gelöscht.</div>`;
     $("jsonBox").value = "";
@@ -622,8 +672,7 @@
         inv[t] = arr;
       }
       writeInventoryToInputs(inv);
-      touchLastChange(); // ✅ imported inventory counts as change
-      autosave();
+      autosaveInventory();
       $("calcBtn").click();
     } catch {
       alert("Import fehlgeschlagen: Ungültiges JSON.");
@@ -711,8 +760,7 @@
     history.push({type, level, prev});
 
     if (inp) inp.value = value ? String(value) : "";
-    touchLastChange(); // ✅ click import counts as change
-    autosave();
+    autosaveInventory();
     $("calcBtn").click();
 
     clickImportLevel++;
@@ -732,8 +780,7 @@
     const inp = invBody.querySelector(`input.num[data-type="${last.type}"][data-lvl="${last.level}"]`);
     if (inp) inp.value = last.prev ? String(last.prev) : "";
     clickImportLevel = Math.min(clickImportLevel, last.level);
-    touchLastChange();
-    autosave();
+    autosaveInventory();
     $("calcBtn").click();
     $("ocrStatus").textContent = `Undo: ${last.type} St.${last.level} zurückgesetzt.`;
     if (clickImportActive) {
@@ -950,6 +997,7 @@
     return plan;
   }
 
+  // NEW: Ressourcen-Auswertung wird IMMER angezeigt – auch wenn IST=0/leer ist
   function renderGoalPlan(plan) {
     $("goalSummary").innerHTML =
       `Benötigte Upgrades (minimal): <b class="mono">${fmt(plan.totalUpgrades)}</b><br>` +
@@ -961,52 +1009,40 @@
       $("goalStoneCheck").innerHTML = `<span class="txt-warn">✗ Dein Stein-Inventar reicht nicht aus (es fehlen Basissteine / Zwischenstufen für das Ziel).</span>`;
     }
 
-    const have = {
-      dg: parseIntSafe($("haveDG").value),
-      gold: parseIntSafe($("haveGold").value),
-      dfg: parseIntSafe($("haveDFG").value),
-      cc: parseIntSafe($("haveCC").value),
-      ub: parseIntSafe($("haveUB").value)
-    };
-    const anyHaveEntered = Object.values(have).some(v => v > 0);
+    const have = readResourcesFromInputs(); // 0 wenn leer
+    const need = plan.costs;
 
-    if (!anyHaveEntered) {
-      $("goalResources").innerHTML = `<span class="muted">Ressourcen-Check: trage oben optional deine Ressourcen ein.</span>`;
-    } else {
-      const need = plan.costs;
-      const rows = [
-        ["Dungeon Gems","dg"],
-        ["Gold","gold"],
-        ["Dark Forest Gems","dfg"],
-        ["Champion Coins","cc"],
-        ["Underground Brains","ub"]
-      ];
+    const rows = [
+      ["Dungeon Gems","dg"],
+      ["Gold","gold"],
+      ["Dark Forest Gems","dfg"],
+      ["Champion Coins","cc"],
+      ["Underground Brains","ub"]
+    ];
 
-      let anyMissing = false;
-      const lines = rows.map(([label,k]) => {
-        const diff = have[k] - need[k];
-        const diffAbs = Math.abs(diff);
-        const diffTxt = diff >= 0
-          ? `<span class="txt-ok">ÜBRIG</span> <span class="mono txt-ok">${fmt(diffAbs)}</span>`
-          : `<span class="txt-warn">FEHLT</span> <span class="mono txt-warn">${fmt(diffAbs)}</span>`;
-        if (diff < 0) anyMissing = true;
+    let anyMissing = false;
+    const lines = rows.map(([label,k]) => {
+      const diff = have[k] - need[k];
+      const diffAbs = Math.abs(diff);
+      const diffTxt = diff >= 0
+        ? `<span class="txt-ok">ÜBRIG</span> <span class="mono txt-ok">${fmt(diffAbs)}</span>`
+        : `<span class="txt-warn">FEHLT</span> <span class="mono txt-warn">${fmt(diffAbs)}</span>`;
+      if (diff < 0) anyMissing = true;
 
-        return `${label}: SOLL <span class="mono">${fmt(need[k])}</span> · IST <span class="mono txt-ok">${fmt(have[k])}</span> · ${diffTxt}`;
-      });
+      const istTxt = have[k] > 0 ? fmt(have[k]) : "0";
+      return `${label}: SOLL <span class="mono">${fmt(need[k])}</span> · IST <span class="mono txt-ok">${istTxt}</span> · ${diffTxt}`;
+    });
 
-      $("goalResources").innerHTML =
-        `<div class="${anyMissing ? 'txt-warn' : 'txt-ok'}" style="margin-bottom:6px;">${anyMissing ? '✗ Ressourcen reichen nicht vollständig.' : '✓ Ressourcen reichen.'}</div>` +
-        `<div class="small">${lines.join("<br>")}</div>`;
-    }
+    $("goalResources").innerHTML =
+      `<div class="${anyMissing ? 'txt-warn' : 'txt-ok'}" style="margin-bottom:6px;">${anyMissing ? '✗ Ressourcen reichen nicht vollständig.' : '✓ Ressourcen reichen.'}</div>` +
+      `<div class="small">${lines.join("<br>")}</div>`;
 
-    // Status badge
-    const resMissing = (Object.values(have).some(v => v > 0)) && (
-      (have.dg - plan.costs.dg) < 0 ||
-      (have.gold - plan.costs.gold) < 0 ||
-      (have.dfg - plan.costs.dfg) < 0 ||
-      (have.cc - plan.costs.cc) < 0 ||
-      (have.ub - plan.costs.ub) < 0
-    );
+    const resMissing =
+      (have.dg - need.dg) < 0 ||
+      (have.gold - need.gold) < 0 ||
+      (have.dfg - need.dfg) < 0 ||
+      (have.cc - need.cc) < 0 ||
+      (have.ub - need.ub) < 0;
 
     let statusText = "OK";
     let statusClass = "goal-status ok";
@@ -1025,11 +1061,12 @@
     writeOutputInventory(res.out);
     renderCosts(res.totalCosts, res.totalUpgrades);
     renderDetails(res.details);
-    autosave();
+    autosaveInventory();
   });
 
   $("saveBtn").addEventListener("click", save);
-  $("loadBtn").addEventListener("click", load);
+  $("loadBtn").addEventListener("click", () => { load(); loadResources(); });
+
   $("clearBtn").addEventListener("click", () => {
     if (confirm("Wirklich alles löschen?")) clearAll();
   });
@@ -1041,12 +1078,12 @@
   $("cancelClickImportBtn").addEventListener("click", stopClickImport);
 
   $("goalCalcBtn").addEventListener("click", () => {
+    saveResources(); // sicherheitshalber
     const inv = readInventoryFromInputs();
     const goals = readGoalsL7();
     const anyGoal = Object.values(goals).some(v => v > 0);
     if (!anyGoal) { clearGoalOutputsOnly(); return; }
-    const plan = goalPlan(inv, goals);
-    renderGoalPlan(plan);
+    renderGoalPlan(goalPlan(inv, goals));
   });
 
   $("goalClearBtn").addEventListener("click", () => {
@@ -1056,6 +1093,7 @@
 
   // initial
   load();
+  loadResources();     // ✅ NEW
   loadLastChange();
   $("calcBtn").click();
   clearGoalOutputsOnly();
